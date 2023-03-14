@@ -137,7 +137,7 @@ function compareRobots(robot1, memory1, robot2, memory2) {
     let totalTurnsRobot1 = 0;
     let totalTurnsRobot2 = 0;
 
-    for (var task = 0; task < 2; task++) {
+    for (var task = 0; task < 100; task++) {
         let taskState = VillageState.random();
 
         totalTurnsRobot1 += runRobot(taskState, robot1, memory1);
