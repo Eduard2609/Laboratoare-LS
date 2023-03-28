@@ -1,3 +1,4 @@
+// UTILITY CODE
 const roads = [
     "Alice's House-Bob's House",   "Alice's House-Cabin",
     "Alice's House-Post Office",   "Bob's House-Town Hall",
@@ -8,88 +9,97 @@ const roads = [
     "Marketplace-Town Hall",       "Shop-Town Hall"
 ];
 
-function buildGraph(edges) {
-    let graph = Object.create(null);
-    function addEdge(from, to) {
-        if (graph[from] == null) {
+function buildGraph(edges) {            //edges input is roads variable above
+    let graph = Object.create(null);      //empty object with no inherited properties as opposed to {} which inherits Object.prototype
+    function addEdge(from, to) {        //from and to taken from var roads are inputs (see for loop below)
+        if (graph[from] == null) {        //if the graph doesn't have the property "from" it creates the property "to"
             graph[from] = [to];
-        } else {
+        } else {                        //if the graph has the property "from" it pushes "to"
             graph[from].push(to);
         }
     }
-    for (let [from, to] of edges.map(r => r.split("-"))) {
-        addEdge(from, to);
-        addEdge(to, from);
+    for (let [from, to] of edges.map(r => r.split("-"))) {  //uses .map to create array and .split to separate "Start-End" format to [from, to] and iterates through roads variable
+        addEdge(from, to);             //runs addEdge functions with parameters switched to iterate through every connection
+        addEdge(to, from);            // property "from" ends up with "to" as a value,  and property "to" ends up with "from" as a value
     }
     return graph;
 }
-
 const roadGraph = buildGraph(roads);
+//console.log(roadGraph); //this is object with each .place as property with value = [] places it touches
+// every place of village and its corresponding road to another location
 
-class VillageState {
-    constructor(place, parcels) {
-        this.place = place;
+
+
+//'state' represents the current state of the village. The state is an object that contains information about the location of the robot,
+// the location of the parcels, and other relevant information needed to simulate the behavior of a robot in a village.
+//The state object is typically created using the VillageState constructor function, which takes two arguments:
+// place, which is an array of objects representing the location of the robot and parcels, and parcels, which is an array of objects
+// representing the parcels to be delivered. The VillageState constructor function creates a new state object with these properties
+// and methods for updating the state by moving the robot, picking up or delivering parcels, and checking whether all parcels have been delivered.
+
+var VillageState = class VillageState {
+    constructor(place, parcels) {         //simply the constructor which gets called at the end of VillageState.random initally
+        this.place = place;                 //and gets called at the end of state.move()
         this.parcels = parcels;
     }
-
     move(destination) {
         if (!roadGraph[this.place].includes(destination)) {
-            return this;
+            return this;        // checks whether there is a road going from the current place to the destination, and if not, it returns the old state since this is not a valid move
         } else {
-            let parcels = this.parcels.map(p => {
-                if (p.place != this.place) return p;
-                return {place: destination, address: p.address};
-            }).filter(p => p.place != p.address);
-            return new VillageState(destination, parcels);
+            let parcels = this.parcels
+                .map(p => {
+                    if (p.place != this.place) return p;
+                    return { place: destination, address: p.address };  //this maps a new array of objects(parcels) with the place = destination(where the robot is moving to)
+                })
+                .filter(p => p.place != p.address);               // filters out objects where the place and address are equal (dropping off parcels)
+            return new VillageState(destination, parcels);       // returns new class (state) with updated destination (state.place) and parcels (state.parcels)
         }
     }
-}
-
-let first = new VillageState(
-    "Post Office",
-    [{place: "Post Office", address: "Alice's House"}]
-);
-let next = first.move("Alice's House");
-
+};
 
 function runRobot(state, robot, memory) {
-    for (let turn = 0;; turn++) {
+    for (let turn = 0; ; turn++) {            //iterates forever until there are no objects in parcels array
         if (state.parcels.length == 0) {
-            console.log(`Done in ${turn} turns`);
+            console.log(`Done in ${turn} turns.`);
+            //return turn;            //THIS WAS ADDED AS PART OF THE MEASURE A ROBOT SOLUTION
             break;
         }
         let action = robot(state, memory);
-        state = state.move(action.direction);
-        memory = action.memory;
+        state = state.move(action.direction);   // robot's .direction and .memory are generated by type of robot function, input into VillageState.move()
+        memory = action.memory;             // robot's .memory is mailRoute or findRoute()
         console.log(`Moved to ${action.direction}`);
+        //console.log(action);    //object with direction and memory, unless its randomRobot which has no memory
+        //console.log(memory);
+        //console.log(state);   // object with properties parcels (array of objects) and place (string)
     }
 }
 
 function randomPick(array) {
-    let choice = Math.floor(Math.random() * array.length);
+    let choice = Math.floor(Math.random() * array.length);  //this picks a random value within an array
     return array[choice];
 }
 
 function randomRobot(state) {
-    return {direction: randomPick(roadGraph[state.place])};
+    return {direction: randomPick(roadGraph[state.place])}; // chooses random value of current state.place property in roadGraph
 }
 
-VillageState.random = function(parcelCount = 5) {
+//THIS IS THE STARTING STATE
+VillageState.random = function(parcelCount = 5) {         //the map starts with # parcels
     let parcels = [];
     for (let i = 0; i < parcelCount; i++) {
-        let address = randomPick(Object.keys(roadGraph));
+        let address = randomPick(Object.keys(roadGraph));   //sets random Object.keys of roadGraph (location) as parcel address
         let place;
         do {
-            place = randomPick(Object.keys(roadGraph));
-        } while (place == address);
-        parcels.push({place, address});
+            place = randomPick(Object.keys(roadGraph));       //sets random Object.keys of roadGraph (location) as parcel place
+        } while (place == address);                         //loops so place and address don't start out the same
+        parcels.push({ place, address });                   //adds object with place and address properties to array parcels
     }
-    return new VillageState("Post Office", parcels);
+    return new VillageState("Post Office", parcels);      //robot starts at Post Office, parcels start in random locations
 };
 
-runRobot(VillageState.random(), randomRobot);
-/////////////////////////////////////////////////////
+//runRobot(VillageState.random(), randomRobot);
 
+// THE MAIL TRUCK'S ROUTE
 
 const mailRoute = [
     "Alice's House", "Cabin", "Alice's House", "Bob's House",
@@ -100,68 +110,159 @@ const mailRoute = [
 
 function routeRobot(state, memory) {
     if (memory.length == 0) {
-        memory = mailRoute;
+        memory = mailRoute;     //resets the memory to go around the route again
     }
-    return {direction: memory[0], memory: memory.slice(1)};
+    return { direction: memory[0], memory: memory.slice(1) };  // sets direction to next in memory array and removes that from the array
 }
 
-function findRoute(graph, from, to) {
-    let work = [{at: from, route: []}];
+//Shortest route betwenn two points on a graph
+function findRoute(graph, from, to) {   //from is current robot.place, to is either parcels.place or parcels.address
+    let work = [{ at: from, route: [] }];
     for (let i = 0; i < work.length; i++) {
-        let {at, route} = work[i];
-        for (let place of graph[at]) {
-            if (place == to) return route.concat(place);
-            if (!work.some(w => w.at == place)) {
-                work.push({at: place, route: route.concat(place)});
+        let { at, route } = work[i];
+        for (let place of graph[at]) {      //iterates through values of roadGraph's property(robot's current location)
+            if (place == to) return route.concat(place);    //if one of the values matches parcel's (either place or address) it's added to route
+            if (!work.some(w => w.at == place)) {   // if no object in work array has .at value equal to place
+                work.push({ at: place, route: route.concat(place) });  // add new object to work array
             }
-        }
+        } //console.log(work);
     }
 }
 
-function goalOrientedRobot({place, parcels}, route) {
+function goalOrientedRobot({ place, parcels }, route) {   //in runRobot function, robot (state, memory), {place, parcels} = state, route = memory
     if (route.length == 0) {
-        let parcel = parcels[0];
-        if (parcel.place != place) {
-            route = findRoute(roadGraph, place, parcel.place);
+        let parcel = parcels[0];    //starts with first parcel robot has
+        if (parcel.place != place) {      //if the parcel was not just picked up at the current place
+            route = findRoute(roadGraph, place, parcel.place);    //run findRoute with to = parcel's current place
         } else {
-            route = findRoute(roadGraph, place, parcel.address);
+            route = findRoute(roadGraph, place, parcel.address);  // if the parcel's current place is robots place, findRoute with parcel's address (where its going)
         }
-    }
-    return {direction: route[0], memory: route.slice(1)};
+    } //console.log(route);
+    return { direction: route[0], memory: route.slice(1) }; //direction = first value in roadGraph's from(robot's current location), memory = removes first item from the array. when array is empty above code executes.
 }
 
-//////////////////////////////////////
-// My code //
+//runRobot(VillageState.random(), goalOrientedRobot,[]);
+
+
+
+//EXERCISES
+
+// EX1 MEASURING A ROBOT
 
 function compareRobots(robot1, memory1, robot2, memory2) {
-    let totalTurnsRobot1 = 0;
-    let totalTurnsRobot2 = 0;
-
-    for (var task = 0; task < 2; task++) {
-        let taskState = VillageState.random();
-
-        totalTurnsRobot1 += runRobot(taskState, robot1, memory1);
-        totalTurnsRobot2 += runRobot(taskState, robot2, memory2);
+    // Generate 100 tasks
+    let tasks = [];
+    for (let i = 0; i < 100; i++) {
+        tasks.push(VillageState.random());
     }
-    console.log(`Average Turns Taken By Robot 1 to complete ${task} tasks: ${totalTurnsRobot1 / task}.`)
-    console.log(`Average Turns Taken By Robot 2 to complete ${task} tasks: ${totalTurnsRobot2 / task}.`)
+
+    // Measure performance of robot1
+    let totalSteps1 = 0;
+    for (let task of tasks) {
+        totalSteps1 += runRobot1(task, robot1, memory1);
+    }
+    let averageSteps1 = totalSteps1 / tasks.length;
+
+    // Measure performance of robot2
+    let totalSteps2 = 0;
+    for (let task of tasks) {
+        totalSteps2 += runRobot1(task, robot2, memory2);
+    }
+    let averageSteps2 = totalSteps2 / tasks.length;
+
+    // Output results
+    console.log(`Robot 1 took an average of ${averageSteps1} steps per task`);
+    console.log(`Robot 2 took an average of ${averageSteps2} steps per task`);
 }
 
+function runRobot1(state, robot, memory) {
+    let steps = 0;
+    for (;;) { //infinite loop
+        if (state.parcels.length == 0) { //  checks if there are any more parcels left for delivery and returns the steps taken
+            return steps;
+        }
+        let action = robot(state, memory); // call the robot function// function returns an object that represents the next action the robot should take
+        // and has 2 properties : direction and memory
+        state = state.move(action.direction); // state updates by moving the robot in the direction specified by the direction property of action obj
+        memory = action.memory; //The memory variable is used to keep track of any additional information
+        // that the robot needs to remember between actions, and is passed to the robot function in each iteration.
+        steps++;
+    }
+}
+// Run the function:
 compareRobots(routeRobot, [], goalOrientedRobot, []);
 
+// EX 2 ROBOT EFFICIENCY
+
+function fasterRobot({place, parcels}, route) { // object with place and parcels// and array route
+    if (route.length == 0) { // checks if the array is empty
+        // Describe a route for every parcel
+        let routes = parcels.map(parcel => { //create new routes array and checks if if parcel.place == robot. current place
+            if (parcel.place != place) { //
+                return {route: findRoute(roadGraph, place, parcel.place),
+                    pickUp: true};
+            } else { //If they are equal, it adds an object to routes that contains a route property with the result of calling
+                // the findRoute function with the arguments roadGraph, the robot's current place, and the parcel's address, and a pickUp property set to false.
+                return {route: findRoute(roadGraph, place, parcel.address),
+                    pickUp: false};
+            }
+        });
+
+        // Choose the shortest route that's either a pickup or a delivery (NESTED FUNCTION)
+        function score({route, pickUp}) {
+            return (pickUp ? 0.5 : 0) - route.length; // returns a number.length of route from 0.5 if pickup is true // from 0 if pickup is false
+        }
+        route = routes.reduce((a, b) => score(a) > score(b) ? b : a).route; //the shortest route that is either a pickup or a delivery(filters)
+        // and assigns its route property to the route argument.
+    }
+    // The direction property represents the next step in the robot's current route.
+    // The memory property (current task or goal, current route) may include information such as the remaining steps in the route,
+    // any parcels that have been picked up or delivered, or any other relevant data.
+    return {direction: route[0], memory: route.slice(1)}; // if the array is not empty
+    // memory property that is equal to the route array with its first element removed.
+}
+
+//Run the function:
+console.log("\n");
+compareRobots(fasterRobot, [], goalOrientedRobot, []);
 
 
+// EX 3 PG GROUP
 
+class PGroup {
+    constructor(array) {
+        this.group = array || []; // a given array or an empty one
+    }
 
+    add(value) { //add method
+        if (this.group.includes(value)) return this; // returns the current PGroup object without modifying it
+        return new PGroup(this.group.concat(value));
+    }
 
+    delete(value) {
+        if (!this.group.includes(value)) return this; // if the value isn't in the array returns the same PGroup object without modifying it
+        // as you can't delete a value that is not present in the array
+        return new PGroup(this.group.filter(m => m !== value)); //an array that contains the original elements that satisfy the condition specified by the
+        // callback function. In this case, the callback function m => m !== value returns true for all elements of the group array except
+        // for the value argument passed to the delete method.
+    }
 
-// console.log(next.place);
-// // → Alice's House
-// console.log(next.parcels);
-// // → []
-// console.log(first.place);
-// // → Post Office
-//
-// let object = Object.freeze({value: 5});
-// object.value = 10;
-// console.log(object.value);
+    has(value) {
+        return this.group.includes(value); //boolean true or false
+    }
+}
+
+PGroup.empty = new PGroup([]);
+
+let a = PGroup.empty.add("a");
+let ab = a.add("b");
+let b = ab.delete("a");
+
+console.log(b.has("b"));
+// → true
+console.log(a.has("b"));
+// → false
+console.log(b.has("a"));
+// → false
+console.log(ab.has("b"));
+// → true
